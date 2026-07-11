@@ -15,4 +15,11 @@ build/
 # Output (generated files)
 output/
 
+# Whale custom skills (project-local, not committed to repo)
+.whale/
+
+# LibreOffice lock files (auto-generated when previewing .xlsx)
+.~lock.*#
+~$*
+
 
