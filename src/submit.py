@@ -37,7 +37,7 @@ def pack_submission(all_preds: dict, cv_results: dict, global_cv_rmse: float):
     # ── 写 CSV
     csv_path = os.path.join(OUTPUT_DIR, "submit.csv")
     template.to_csv(csv_path, index=False, encoding='utf-8-sig')
-    print(f"\n  ✓ {csv_path}")
+    print(f"\n  [OK] {csv_path}")
     print(template.to_string(index=False))
 
     # ── 打包 ZIP（仅 submit/submit.csv）
@@ -45,6 +45,6 @@ def pack_submission(all_preds: dict, cv_results: dict, global_cv_rmse: float):
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.write(csv_path, arcname="submit/submit.csv")
 
-    print(f"  ✓ {zip_path}")
+    print(f"  [OK] {zip_path}")
     print(f"     内含: submit/submit.csv")
     return zip_path

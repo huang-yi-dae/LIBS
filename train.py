@@ -36,8 +36,9 @@ def main():
     print("\n" + "=" * 60)
     print("Step 2: 两阶段训练（分煤种）")
 
-    models     = {}
-    cv_results = {}
+    models      = {}
+    cv_results  = {}
+    n_batches_l = []  # 各煤种批次数，用于加权平均
 
     for coal_type in COAL_TYPES:
         train_data = load_coal_spectra(TRAIN_DIR, coal_type, label_map, aux_map)
@@ -46,10 +47,14 @@ def main():
             continue
 
         model_dict = train_coal_model(coal_type, train_data)
-        models[coal_type]     = model_dict
-        cv_results[coal_type] = model_dict['cv_rmse']
+        models[coal_type]      = model_dict
+        cv_results[coal_type]  = model_dict['cv_rmse']
+        n_batches_l.append(train_data['n_batches'])
 
-    global_cv_rmse = float(np.mean(list(cv_results.values())))
+    # 加权平均（按批次数加权，更多批次 = 更可靠的 CV 估计）
+    weights = np.array(n_batches_l, dtype=np.float32)
+    values  = np.array(list(cv_results.values()), dtype=np.float32)
+    global_cv_rmse = float(np.average(values, weights=weights))
     print(f"\n{'=' * 60}")
     print(f"全局 CV-RMSE: {global_cv_rmse:.2f}")
 
