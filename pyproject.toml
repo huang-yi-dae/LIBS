@@ -1,0 +1,13 @@
+[project]
+name = "libs-coal-prediction"
+version = "0.7.0"
+description = "LIBS 煤炭发热量预测 — 通过激光诱导击穿光谱预测煤炭发热量"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scikit-learn>=1.3",
+    "openpyxl>=3.1",
+    "xgboost>=2.0",
+]
