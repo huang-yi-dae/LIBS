@@ -31,7 +31,7 @@ def _ensure_file():
         print(f"  [Tracker] 创建实验日志: {TRACKER_FILE}")
 
 
-def log_experiment(cv_rmse: float) -> None:
+def log_experiment(cv_rmse: float, treatment: str = "") -> None:
     """
     追加一条实验记录。
 
@@ -39,6 +39,8 @@ def log_experiment(cv_rmse: float) -> None:
     ----------
     cv_rmse : float
         本轮训练的全局交叉验证 RMSE。
+    treatment : str
+        本次实验的处理方案描述。
     """
     _ensure_file()
 
@@ -46,10 +48,10 @@ def log_experiment(cv_rmse: float) -> None:
 
     with open(TRACKER_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([now, f"{cv_rmse:.2f}", "", ""])
+        writer.writerow([now, f"{cv_rmse:.2f}", "", treatment])
 
     print(f"  [Tracker] 已记录 ↓")
     print(f"    timestamp  : {now}")
     print(f"    cv_rmse    : {cv_rmse:.2f}")
     print(f"    test_score : (待填写)")
-    print(f"    treatment  : (待填写)")
+    print(f"    treatment  : {treatment}")

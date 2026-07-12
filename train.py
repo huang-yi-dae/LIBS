@@ -11,6 +11,7 @@
 
 import sys
 import os
+import argparse
 import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
@@ -26,6 +27,10 @@ from src.experiment_tracker import log_experiment
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--treatment", type=str, default="",
+                        help="实验处理描述，写入 experiment_log.csv")
+    args = parser.parse_args()
     # ── Step 1: 加载标签 ──────────────────────────────────────────────────
     print("=" * 60)
     print("Step 1: 加载标签")
@@ -61,7 +66,7 @@ def main():
     # ── Step 3: 记录实验日志 ──────────────────────────────
     print("\n" + "=" * 60)
     print("Step 3: 记录实验日志")
-    log_experiment(global_cv_rmse)
+    log_experiment(global_cv_rmse, treatment=args.treatment)
 
     # ── Step 4: 测试集推理 ────────────────────────────────────────────────
     print("\n" + "=" * 60)
