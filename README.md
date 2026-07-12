@@ -127,4 +127,6 @@ SMALL_BATCH_THRESHOLD = 10
 - [ ] Boltzmann 图估算等离子体温度（更深物理特征）
 - [ ] 多版本集成（Ensemble V6 + V7 预测）
 
-> **已排除的方向（经实验验证）：** 树模型（LGBM/XGBoost）替换 RidgeCV — 线上得分 283.89 vs RidgeCV 278.50，小样本下树模型非线性能力反而有害。详见 `EXPERIMENT_LOG.md` 实验 #5~#16。
+> **已排除的方向（经实验验证）：**
+> - 树模型（LGBM/XGBoost）替换 RidgeCV — 线上 283.89 vs RidgeCV 278.50，小样本下非线性能力有害。详见实验 #5~#15。
+> - 预测值异常值剔除后取中位数 — CV↓1.12 但线上↑6.3，CV乐观偏差。详见实验 #17。
