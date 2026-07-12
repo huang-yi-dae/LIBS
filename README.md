@@ -123,7 +123,8 @@ SMALL_BATCH_THRESHOLD = 10
 
 ## 进一步优化方向
 
-- [ ] LightGBM 替换 Stage2 Ridge（捕获非线性）
 - [ ] 批次内光谱异常检测（去除污染光谱）
 - [ ] Boltzmann 图估算等离子体温度（更深物理特征）
 - [ ] 多版本集成（Ensemble V6 + V7 预测）
+
+> **已排除的方向（经实验验证）：** 树模型（LGBM/XGBoost）替换 RidgeCV — 线上得分 283.89 vs RidgeCV 278.50，小样本下树模型非线性能力反而有害。详见 `EXPERIMENT_LOG.md` 实验 #5~#16。
