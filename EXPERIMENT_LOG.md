@@ -125,3 +125,46 @@
 **后续方向:**
 - 如需引入树模型，应大幅限制树复杂度（n_estimators ≤ 100, max_depth ≤ 3, min_child_samples ≥ 10）
 - 或考虑 XGBoost（已在依赖中）配合更高正则化参数
+
+---
+
+## 实验 #8-#13 — 小树模型对比试验 (n_estimators=50, max_depth=2)
+
+**参数设计:**
+- LGBM-small: `num_leaves=7, min_child_samples=10, subsample=0.8, colsample_bytree=0.8, reg_alpha=0.5, reg_lambda=0.5`
+- XGBoost: `learning_rate=0.3, subsample=0.8, colsample_bytree=0.8, reg_alpha=1.0, reg_lambda=1.0`
+
+| 实验 | 模型 | 修改范围 | CV-RMSE | vs 基线 |
+|---|---|---|---|---|
+| #8 | LGBM-small | Stage1 only | **226.92** | +54 |
+| #9 | LGBM-small | Stage2 only | **277.71** | +105 |
+| #10 | LGBM-small | Both | **273.75** | +101 |
+| **#11** | **XGBoost** | **Stage1 only** | **208.33** ⭐ | **+36 最佳** |
+| #12 | XGBoost | Stage2 only | **272.89** | +100 |
+| #13 | XGBoost | Both | **250.97** | +78 |
+
+**各煤种 Stage2 CV-RMSE 明细（最优变体 #11 vs 基线）:**
+
+| 煤种 | 基线(Ridge) | #8 LGBM-s1 | #11 XGB-s1 ⭐ |
+|---|---|---|---|
+| 赵固一矿 | ~174 | 256 | **237** |
+| 赵固二矿 | ~150 | 104(sh=1) | **34(sh=1)** |
+| 中马矿 | ~287 | 287(w=1) | **253(w=1)** |
+| 九里山矿 | ~192 | 182 | **176** |
+| 煤场混煤 | ~284 | 261 | **252** |
+| **全局加权** | **172.66** | **226.92** | **208.33** |
+
+**关键发现:**
+
+1. **Stage1 替换比 Stage2 替换更有希望** — 在所有 6 个变体中，替换 Stage1 的 CV-RMSE 总是低于替换 Stage2 的
+   - 原因: Stage1 有更多训练样本（每条光谱一个样本），而 Stage2 只有批次级别的样本（7-27 个）
+   
+2. **缩小树规模明显改善** — 从 #5 (500 trees) 的 251.99 降到 #8 (50 trees) 的 226.92，再到 #11 (XGB) 的 208.33
+
+3. **XGBoost Stage1 only (#11) 是所有树变体中最佳的** — 208.33，虽然仍比 RidgeCV 基线 172.66 差 36 点
+
+4. **Stage2 不适合任何树模型** — 只要 Stage2 换成树模型（#9, #10, #12, #13），CV-RMSE 全部跳到 250+，说明 7-27 个批次样本根本不够训练树模型
+
+**结论:**
+- **RidgeCV 仍然是当前数据规模下最合适的模型**，树模型（无论 LGBM 还是 XGBoost）在小样本多特征的 LIBS 预测任务中过拟合严重
+- 如果未来数据量大幅增加（尤其是批次数量），XGBoost Stage1 + RidgeCV Stage2 可能是最有潜力的混合架构
