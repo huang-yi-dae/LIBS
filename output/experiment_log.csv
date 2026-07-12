@@ -1,0 +1,31 @@
+timestamp,cv_rmse,test_score,treatment
+2026-07-11 16:08:49,173.67,278.5046,基线 
+2026-07-11 17:05:11,169.87,286.7124,config.py中Ridge网格搜索范围修改
+
+2026-07-11 17:09:54,177.17,,
+2026-07-11 17:11:06,178.16,,看到上一轮结果当中,正则化强度多是1或3,因此把网格改为前密后疏,效果不佳.
+
+2026-07-11 20:06:58,174.92,285.77435,遍历数据找到各个元素(config.py中KEY_LINES)的中心波长并通过窗口搜索找到对应的窗口宽度.
+
+2026-07-11 23:14:40,174.14,,
+2026-07-11 23:18:26,172.66,,
+2026-07-12 11:09:44,172.66,284.85802,将PCA维度提高到五十,一百,效果都没有什么变化.
+
+
+
+2026-07-12 11:25:40,251.99,,"Stage1 LGBMRegressor(n_estimators=500), Stage2 RidgeCV unchanged"
+2026-07-12 11:26:29,265.24,,"Stage1 RidgeCV unchanged, Stage2 LGBMRegressor(n_estimators=500)"
+2026-07-12 11:26:43,253.63,,Both stages LGBMRegressor(n_estimators=500)
+2026-07-12 11:55:35,277.71,,"Stage1 RidgeCV, LGBM-small Stage2(n_estimators=50,depth=2)"
+2026-07-12 11:55:46,226.92,,"LGBM-small Stage1(n_estimators=50,depth=2), Stage2 RidgeCV"
+2026-07-12 11:55:46,208.33,,"XGBoost Stage1(n_estimators=50,depth=2,reg), Stage2 RidgeCV"
+2026-07-12 11:55:31,272.89,,"Stage1 RidgeCV, XGBoost Stage2(n_estimators=50,depth=2,reg)"
+2026-07-12 11:55:50,273.75,,"Both stages LGBM-small(n_estimators=50,depth=2)"
+2026-07-12 11:55:51,250.97,,"Both stages XGBoost(n_estimators=50,depth=2,reg)"
+2026-07-12 12:04:40,188.08,,"LGBM Stage1 reg-search(10 candidates alpha/lambda 0.5-100), Stage2 RidgeCV"
+2026-07-12 12:04:43,191.36,,"XGBoost Stage1 reg-search(10 candidates alpha/lambda 0.5-100), Stage2 RidgeCV"
+2026-07-12 12:25:15,188.08,283.89,"LGBM Stage1 reg-search, Stage2 RidgeCV — 线上验证"
+
+2026-07-12 12:36:00,172.66,278.5046,"[最终基线] RidgeCV 加权平均 CV-RMSE — 树模型实验全部差于此基线，回滚代码到 RidgeCV"
+2026-07-12 16:03:39,171.54,284.81387,"仅赵固一矿豫焦末煤 zscore-2 剔除: 同批次内对预测值做 z-score>2 剔除后再取中位数. CV-RMSE↓1.12 但线上↑6.3, 过拟合 CV."
+2026-07-12 16:20:08,172.08,,仅赵固一矿豫焦末煤 iqr 剔除: 同上但改用 IQR 法. CV-RMSE↓0.58, 线上待填写.
