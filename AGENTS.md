@@ -13,7 +13,8 @@ LIBS/
 │   ├── features.py        # Feature engineering: spectral statistics, line integrals, PCA
 │   ├── model.py           # Two-stage Ridge regression with GroupKFold CV + mean shrinkage
 │   ├── submit.py          # Package predictions into submit.zip
-│   └── experiment_tracker.py  # Cross-run experiment logging (CSV-based)
+│   ├── experiment_tracker.py  # Cross-run experiment logging (CSV-based)
+│   └── window_search.py   # Automated window width search for KEY_LINES
 │
 ├── train_data/            # Training spectra (organized by coal type → batch folders)
 ├── test_data/             # Test spectra (same layout as train_data)

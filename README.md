@@ -2,7 +2,7 @@
 
 **任务**: 通过激光诱导击穿光谱（LIBS）预测煤炭发热量（kcal/kg）  
 **评估**: 线上 RMSE（越低越好）  
-**当前版本**: V7  本地 CV-RMSE ≈ 176
+**当前版本**: V7  本地 CV-RMSE ≈ 173（按批次数加权，原简单平均 176）
 
 > 本项目基于 [Datawhale](https://datawhale.cn) 教学赛项目改造，赛题来源：[AI 实战训练营 — LIBS 煤炭发热量预测](https://ailc.datawhale.cn/hall/group/100000937)
 
@@ -23,7 +23,8 @@ LIBS/
 │   ├── features.py             # 特征工程（谱线积分 + 统计量 + PCA）
 │   ├── model.py                # 两阶段 Ridge 训练 + 推理
 │   ├── submit.py               # 打包 submit.zip
-│   └── experiment_tracker.py   # 跨轮次实验日志（记录 CV-RMSE）
+│   ├── experiment_tracker.py   # 跨轮次实验日志（记录 CV-RMSE）
+│   └── window_search.py        # 窗口宽度自动搜索工具
 │
 ├── train_data/        # 训练集（已解压）
 ├── test_data/         # 测试集（已解压）
@@ -80,10 +81,14 @@ LIBS 光谱 (7305维, 196-813nm)
 
 ### 防过拟合策略
 
-1. **正则化**: Ridge，alpha ∈ {1, 10, 50, 100, 500, 1000, 5000, 10000}（去掉 0.01/0.1）
+1. **正则化**: Ridge，alpha ∈ {1, 10, 50, 100, 500, 1000, 5000, 10000}（去掉 0.01/0.1；注意候选值过多会导致 alpha 选择本身过拟合）
 2. **GroupKFold CV**: 以批次为单位分组，防止同批次光谱泄露
 3. **均值收缩**: 批次数 ≤ 10 时，预测值向煤种均值收缩
 4. **OOF**: Stage2 输入的辅助指标来自 Out-of-Fold 预测
+
+### 全局 CV-RMSE 计算
+
+各矿场 Stage2 CV-RMSE 按**批次数加权平均**（非简单平均）。批次数越多的矿场其 CV 估计越可靠，权重越高。经验证该指标与线上分数的变化方向协同（3 组实验全匹配）。
 
 ---
 
