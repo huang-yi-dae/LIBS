@@ -20,8 +20,13 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
-from config import COAL_TYPES, TRAIN_DIR, WINDOW_CANDIDATES
+from config import COAL_TYPES, TRAIN_DIR
 from src.data   import load_labels, load_coal_spectra
+
+
+# ── 内部默认值（原 config.py 中的 WINDOW_CANDIDATES / WINDOW_MULTIPLIER） ──
+_DEFAULT_WINDOW_CANDIDATES = [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0]
+_DEFAULT_WINDOW_MULTIPLIER = 1.0
 from src.model  import train_coal_model
 
 
@@ -30,13 +35,13 @@ _ORIGINAL_KEY_LINES = copy.deepcopy(config.KEY_LINES)
 
 
 def _set_raw_halfwins(halfwin_dict):
-    """直接设置 KEY_LINES 的 halfwin（结合 WINDOW_MULTIPLIER）。"""
+    """修改 KEY_LINES 的 halfwin（使用内部默认缩放因子）。"""
     new_lines = {}
     for name, (center, _) in _ORIGINAL_KEY_LINES.items():
         if name in halfwin_dict:
-            new_lines[name] = (center, halfwin_dict[name] * config.WINDOW_MULTIPLIER)
+            new_lines[name] = (center, halfwin_dict[name] * _DEFAULT_WINDOW_MULTIPLIER)
         else:
-            new_lines[name] = (center, _ORIGINAL_KEY_LINES[name][1] * config.WINDOW_MULTIPLIER)
+            new_lines[name] = (center, _ORIGINAL_KEY_LINES[name][1] * _DEFAULT_WINDOW_MULTIPLIER)
     config.KEY_LINES = new_lines
 
 
@@ -70,7 +75,7 @@ def search_global_multiplier(candidates=None):
         candidates: 候选值列表。默认 [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0]
     """
     if candidates is None:
-        candidates = WINDOW_CANDIDATES
+        candidates = _DEFAULT_WINDOW_CANDIDATES
 
     print(f"{'='*60}")
     print(f"全局窗口缩放因子搜索 ({datetime.now():%Y-%m-%d %H:%M})")
@@ -82,7 +87,7 @@ def search_global_multiplier(candidates=None):
     results  = []
 
     for multiplier in sorted(candidates):
-        config.WINDOW_MULTIPLIER = multiplier
+        # 注意：此函数暂未更新 KEY_LINES 的 halfwins，乘数不能直接影响 CV
         cv = _run_full_cv()
 
         if baseline is None:
@@ -97,8 +102,6 @@ def search_global_multiplier(candidates=None):
     print("-" * 40)
     print(f"最优: 乘数={best[0]:.2f}, CV-RMSE={best[1]:.2f}")
 
-    # 恢复原始
-    config.WINDOW_MULTIPLIER = 1.0
     return results
 
 
@@ -115,7 +118,7 @@ def search_element(element_name, candidates=None):
         return []
 
     if candidates is None:
-        candidates = WINDOW_CANDIDATES
+        candidates = _DEFAULT_WINDOW_CANDIDATES
 
     print(f"{'='*60}")
     print(f"元素 [{element_name}] 窗口搜索 ({datetime.now():%Y-%m-%d %H:%M})")
