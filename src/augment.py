@@ -190,6 +190,57 @@ def augment_data(data: dict, strategy: str = 'noise',
     else:
         raise ValueError(f"Unknown augmentation strategy: {strategy}")
 
+
+# ── 折内特征级 Mixup (跨批次混合) ─────────────────────────────────────────────
+
+def fold_mixup(X: np.ndarray, y: np.ndarray,
+               alpha: float = 1.0, aug_factor: int = 1,
+               seed: int = 42) -> tuple:
+    """
+    **折内 Mixup**: 在 CV 训练折的特征矩阵上做跨样本线性插值。
+
+    与 ``augment_data`` 的区别:
+      - 工作在**特征级别** (PCA后), 而非光谱级别
+      - 混合**不同批次**的样本, 而非限于同批次
+      - 标签也插值: y_mix = λ·y_i + (1-λ)·y_j
+      - 在 CV 折内调用: 仅增强训练部分, 验证部分不动
+
+    用于 ``model.train_coal_model`` 的 CV 循环内部。
+
+    Parameters
+    ----------
+    X : (n, n_features)  训练集特征矩阵
+    y : (n,)             训练集标签 / 辅助指标
+    alpha : float        Beta(α,α) 参数. α=1.0 → Uniform(0,1)
+    aug_factor : int     每条样本生成的混合样本数 (总样本量 = n * aug_factor)
+    seed : int           随机种子
+
+    Returns
+    -------
+    X_aug : (n * aug_factor, n_features)  混合后的特征
+    y_aug : (n * aug_factor,)             混合后的标签
+    """
+    rng = np.random.default_rng(seed)
+    n = len(X)
+    if n < 2:
+        return np.empty((0, X.shape[1])), np.empty(0)
+
+    mixed_X, mixed_y = [], []
+    for _ in range(aug_factor):
+        # 随机配对 (避免自己和自己混)
+        idx1 = rng.integers(0, n, size=n)
+        idx2 = rng.integers(0, n, size=n)
+        same = (idx1 == idx2)
+        idx2[same] = (idx2[same] + 1) % n
+
+        lam = rng.beta(alpha, alpha, size=n).reshape(-1, 1)
+        X_new = (lam * X[idx1] + (1 - lam) * X[idx2]).astype(np.float32)
+        y_new = (lam.ravel() * y[idx1] + (1 - lam.ravel()) * y[idx2]).astype(np.float64)
+        mixed_X.append(X_new)
+        mixed_y.append(y_new)
+
+    return np.vstack(mixed_X), np.concatenate(mixed_y)
+
     # ── 构建增强后数据字典 ──
     result = dict(data)  # shallow copy
     result['spectra'] = new_spectra

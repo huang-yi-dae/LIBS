@@ -46,6 +46,12 @@ def main():
                         help="Jitter 缩放上限 (默认 1.1)")
     parser.add_argument("--aug-small-only", action="store_true",
                         help="仅对 SMALL_BATCH_THRESHOLD 以内的小样本煤种做增强")
+    parser.add_argument("--fold-mixup", action="store_true",
+                        help="折内跨批次 Mixup: CV每折训练集内做特征级插值")
+    parser.add_argument("--fold-mixup-alpha", type=float, default=1.0,
+                        help="折内 Mixup Beta α 参数 (默认1.0, 即Uniform)")
+    parser.add_argument("--fold-mixup-factor", type=int, default=1,
+                        help="折内 Mixup 每条样本生成的混合副本数")
     args = parser.parse_args()
     # ── Step 1: 加载标签 ──────────────────────────────────────────────────
     print("=" * 60)
@@ -92,7 +98,15 @@ def main():
             print(f"  [{coal_type}] 增强: {n_orig} → {len(train_data['spectra'])} "
                   f"(+{n_aug} augmented, groups={train_data['n_batches']})")
 
-        model_dict = train_coal_model(coal_type, train_data)
+        # ── 折内 Mixup 配置 ──
+        fm_config = None
+        if args.fold_mixup:
+            fm_config = {
+                'alpha': args.fold_mixup_alpha,
+                'aug_factor': args.fold_mixup_factor,
+            }
+
+        model_dict = train_coal_model(coal_type, train_data, fold_mixup_config=fm_config)
         models[coal_type]      = model_dict
         cv_results[coal_type]  = model_dict['cv_rmse']
         n_batches_l.append(train_data['n_batches'])
