@@ -13,6 +13,7 @@ LIBS/
 │   ├── features.py        # Feature engineering: spectral statistics, line integrals, PCA
 │   ├── model.py           # Two-stage Ridge regression with GroupKFold CV + mean shrinkage
 │   ├── submit.py          # Package predictions into submit.zip
+│   ├── augment.py         # Spectral augmentation (shot-noise/mixup/jitter) — rejected
 │   ├── experiment_tracker.py  # Cross-run experiment logging (CSV-based)
 │   └── window_search.py   # Automated window width search for KEY_LINES
 │
@@ -29,6 +30,8 @@ Source code lives entirely under `src/`. Each module has a single, documented re
 ```bash
 uv sync              # Install all dependencies from uv.lock (use after clone or dependency change)
 python train.py      # Run the full pipeline: training → evaluation → test inference → packaging
+python train.py --augment shot-noise --aug-noise-factor 0.05 --aug-factor 2  # 物理散粒噪声增强（实验已排除方向）
+python train.py --fold-mixup --fold-mixup-alpha 1.0 --fold-mixup-factor 1    # 折内跨批次 Mixup（实验已排除方向）
 ```
 
 There are no separate build or test scripts. Validation is done locally via CV-RMSE reported by `train.py`, and online by submitting `output/submit.zip` to the competition platform.
