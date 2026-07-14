@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--treatment", type=str, default="",
                         help="实验处理描述，写入 experiment_log.csv")
     parser.add_argument("--augment", type=str, default="none",
-                        choices=["none", "noise", "mixup", "jitter", "combined"],
+                        choices=["none", "noise", "shot-noise", "mixup", "jitter", "combined"],
                         help="数据增强策略: none=不增强")
     parser.add_argument("--aug-factor", type=int, default=1,
                         help="每条原始光谱生成的增强副本数")
@@ -44,6 +44,8 @@ def main():
                         help="Jitter 缩放下限 (默认 0.9)")
     parser.add_argument("--aug-jitter-max", type=float, default=None,
                         help="Jitter 缩放上限 (默认 1.1)")
+    parser.add_argument("--aug-correlation-length", type=float, default=None,
+                        help="shot-noise 波长相关长度 (波长点数, 默认 3.0)")
     parser.add_argument("--aug-small-only", action="store_true",
                         help="仅对 SMALL_BATCH_THRESHOLD 以内的小样本煤种做增强")
     parser.add_argument("--fold-mixup", action="store_true",
@@ -92,6 +94,8 @@ def main():
                 aug_kw['jitter_min'] = args.aug_jitter_min
             if args.aug_jitter_max is not None:
                 aug_kw['jitter_max'] = args.aug_jitter_max
+            if args.aug_correlation_length is not None:
+                aug_kw['correlation_length'] = args.aug_correlation_length
             n_orig = len(train_data['spectra'])
             train_data = augment_data(train_data, **aug_kw)
             n_aug = len(train_data['spectra']) - n_orig

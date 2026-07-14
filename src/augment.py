@@ -5,10 +5,11 @@
 确保 GroupKFold/LOOCV 评估结构不受影响，防止数据泄漏。
 
 增强策略:
-  noise    : Gaussian additive noise (模拟测量噪声)
-  mixup    : 同批次内两谱线性插值 (隐式正则化)
-  jitter   : 随机振幅缩放 + 小噪声 (模拟激光能量波动)
-  combined : noise + jitter + mixup 依次应用
+  noise       : Gaussian additive noise (模拟测量噪声)
+  shot-noise  : 散粒噪声+乘性噪声+波长相关 (符合LIBS物理特性)
+  mixup       : 同批次内两谱线性插值 (隐式正则化)
+  jitter      : 随机振幅缩放 + 小噪声 (模拟激光能量波动)
+  combined    : noise + jitter + mixup 依次应用
 """
 
 import numpy as np
@@ -29,6 +30,59 @@ def _jitter(inten: np.ndarray, rng: np.random.Generator,
     scale = rng.uniform(*jitter_range)
     noise = rng.normal(0, noise_factor * inten.std() + 1e-8, inten.shape)
     return np.maximum(inten * scale + noise.astype(np.float32), 0.0)
+
+
+def _shot_noise(inten: np.ndarray, rng: np.random.Generator,
+                noise_factor: float = 0.05,
+                correlation_length: float = 3.0) -> np.ndarray:
+    """
+    LIBS 物理噪声模型 — 散粒噪声 + 乘性 + 波长相关。
+
+    物理依据:
+      - 散粒噪声 (Poisson): 噪声方差 ∝ 信号强度, 即 σ_noise ∝ √(I)
+      - 乘性噪声 (flicker): 激光能量波动导致 σ_noise ∝ I
+      - 波长相关性: 光谱仪点扩散函数 + 等离子体连续谱使相邻通道噪声相关
+
+    实现:
+      1. 生成白噪声 → 高斯核卷积 → 产生相关结构
+      2. 噪声幅度 = noise_factor × (√|I| + c·|I|)  散粒+乘性混合
+      3. 与原谱相加
+
+    Parameters
+    ----------
+    inten : np.ndarray
+        原始光谱强度
+    noise_factor : float
+        整体噪声强度系数 (默认 0.05)
+    correlation_length : float
+        高斯相关核的 σ (波长点数, 默认 3.0)
+    """
+    n = len(inten)
+    if n < 2:
+        return inten
+
+    # 1. 白噪声 → 高斯平滑 → 相关噪声
+    white = rng.normal(0, 1, n)
+    if correlation_length > 0.5 and n > 3:
+        # 高斯卷积核, 截断到 ±3σ
+        radius = max(1, int(round(correlation_length * 2)))
+        kernel = np.exp(-0.5 * (np.arange(-radius, radius + 1) ** 2)
+                        / (correlation_length ** 2))
+        kernel /= kernel.sum()
+        colored = np.convolve(white, kernel, mode='same')
+        colored = colored / (colored.std() + 1e-8)  # 归一化到单位方差
+    else:
+        colored = white
+
+    # 2. 散粒项 (Poisson): σ ∝ √|I|  + 乘性项 (flicker): σ ∝ |I|
+    # 乘性占比用 shot_ratio=0.7 混合 (偏散粒)
+    I_safe = np.maximum(inten, 0.0)
+    shot_term  = np.sqrt(I_safe) * 0.7   # 散粒主导
+    flick_term = I_safe * 0.3            # 乘性辅助
+    noise_amplitude = noise_factor * (shot_term + flick_term / (I_safe.mean() + 1e-8))
+
+    noise = (noise_amplitude * colored).astype(np.float32)
+    return np.maximum(inten + noise, 0.0)
 
 
 def _mixup_spectra(spec_a: tuple, spec_b: tuple,
@@ -68,7 +122,8 @@ def augment_data(data: dict, strategy: str = 'noise',
                  alpha: float = 0.5,             # mixup Beta α 参数
                  noise_factor: float = 0.02,     # noise/jitter 噪声强度
                  jitter_min: float = 0.9,        # jitter 缩放下限
-                 jitter_max: float = 1.1) -> dict:  # jitter 缩放上限
+                 jitter_max: float = 1.1,        # jitter 缩放上限
+                 correlation_length: float = 3.0) -> dict:  # shot-noise 相关长度
     """
     对训练数据做光谱级数据增强。
 
@@ -105,13 +160,17 @@ def augment_data(data: dict, strategy: str = 'noise',
     new_targets = list(data['targets']) if has_target else None
     new_aux = list(data['aux']) if has_aux else None
 
-    if strategy in ('noise', 'jitter'):
+    if strategy in ('noise', 'jitter', 'shot-noise'):
         # ── 逐光谱增强 ──
         for i in range(n_orig):
             wl, inten = spectra[i]
             for _ in range(aug_factor):
                 if strategy == 'noise':
                     aug_inten = _add_noise(inten, rng, noise_factor=noise_factor)
+                elif strategy == 'shot-noise':
+                    aug_inten = _shot_noise(inten, rng,
+                                             noise_factor=noise_factor,
+                                             correlation_length=correlation_length)
                 else:
                     aug_inten = _jitter(inten, rng,
                                          jitter_range=(jitter_min, jitter_max),
