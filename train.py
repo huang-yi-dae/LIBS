@@ -36,6 +36,14 @@ def main():
                         help="数据增强策略: none=不增强")
     parser.add_argument("--aug-factor", type=int, default=1,
                         help="每条原始光谱生成的增强副本数")
+    parser.add_argument("--aug-alpha", type=float, default=None,
+                        help="Mixup Beta α 参数 (默认0.5) / Noise factor / Jitter范围")
+    parser.add_argument("--aug-noise-factor", type=float, default=None,
+                        help="噪声强度 (默认 0.02)")
+    parser.add_argument("--aug-jitter-min", type=float, default=None,
+                        help="Jitter 缩放下限 (默认 0.9)")
+    parser.add_argument("--aug-jitter-max", type=float, default=None,
+                        help="Jitter 缩放上限 (默认 1.1)")
     args = parser.parse_args()
     # ── Step 1: 加载标签 ──────────────────────────────────────────────────
     print("=" * 60)
@@ -59,9 +67,18 @@ def main():
 
         # ── 数据增强（仅在训练时，保持 GroupKFold 结构） ──
         if args.augment != "none":
+            # 构建参数字典（只传显式指定的值）
+            aug_kw = {'strategy': args.augment, 'aug_factor': args.aug_factor}
+            if args.aug_alpha is not None:
+                aug_kw['alpha'] = args.aug_alpha
+            if args.aug_noise_factor is not None:
+                aug_kw['noise_factor'] = args.aug_noise_factor
+            if args.aug_jitter_min is not None:
+                aug_kw['jitter_min'] = args.aug_jitter_min
+            if args.aug_jitter_max is not None:
+                aug_kw['jitter_max'] = args.aug_jitter_max
             n_orig = len(train_data['spectra'])
-            train_data = augment_data(
-                train_data, strategy=args.augment, aug_factor=args.aug_factor)
+            train_data = augment_data(train_data, **aug_kw)
             n_aug = len(train_data['spectra']) - n_orig
             print(f"  [{coal_type}] 增强: {n_orig} → {len(train_data['spectra'])} "
                   f"(+{n_aug} augmented, groups={train_data['n_batches']})")

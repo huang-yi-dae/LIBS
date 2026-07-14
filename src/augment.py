@@ -64,7 +64,11 @@ def _batch_mixup(spectra_batch: list, rng: np.random.Generator,
 # ── 主入口 ────────────────────────────────────────────────────────────────────
 
 def augment_data(data: dict, strategy: str = 'noise',
-                 aug_factor: int = 1, seed: int = 42) -> dict:
+                 aug_factor: int = 1, seed: int = 42,
+                 alpha: float = 0.5,             # mixup Beta α 参数
+                 noise_factor: float = 0.02,     # noise/jitter 噪声强度
+                 jitter_min: float = 0.9,        # jitter 缩放下限
+                 jitter_max: float = 1.1) -> dict:  # jitter 缩放上限
     """
     对训练数据做光谱级数据增强。
 
@@ -107,9 +111,11 @@ def augment_data(data: dict, strategy: str = 'noise',
             wl, inten = spectra[i]
             for _ in range(aug_factor):
                 if strategy == 'noise':
-                    aug_inten = _add_noise(inten, rng)
+                    aug_inten = _add_noise(inten, rng, noise_factor=noise_factor)
                 else:
-                    aug_inten = _jitter(inten, rng)
+                    aug_inten = _jitter(inten, rng,
+                                         jitter_range=(jitter_min, jitter_max),
+                                         noise_factor=noise_factor)
 
                 new_spectra.append((wl, aug_inten))
                 new_names.append(data['names'][i])
@@ -131,7 +137,7 @@ def augment_data(data: dict, strategy: str = 'noise',
             target = data['targets'][indices[0]] if has_target else None
             aux = data['aux'][indices[0]] if has_aux else None
 
-            mixed = _batch_mixup(batch_spectra, rng, aug_factor=aug_factor)
+            mixed = _batch_mixup(batch_spectra, rng, alpha=alpha, aug_factor=aug_factor)
             for m_spec in mixed:
                 new_spectra.append(m_spec)
                 new_names.append(name)
@@ -148,8 +154,10 @@ def augment_data(data: dict, strategy: str = 'noise',
         for i in range(n_orig):
             wl, inten = spectra[i]
             for _ in range(n_per_spec_aug):
-                aug_inten = _add_noise(inten, rng, noise_factor=0.01)
-                aug_inten = _jitter(aug_inten, rng, noise_factor=0.003)
+                aug_inten = _add_noise(inten, rng, noise_factor=noise_factor * 0.5)
+                aug_inten = _jitter(aug_inten, rng,
+                                     jitter_range=(jitter_min, jitter_max),
+                                     noise_factor=noise_factor * 0.3)
                 new_spectra.append((wl, aug_inten))
                 new_names.append(data['names'][i])
                 new_groups.append(data['groups'][i])
@@ -170,7 +178,7 @@ def augment_data(data: dict, strategy: str = 'noise',
             target = data['targets'][indices[0]] if has_target else None
             aux = data['aux'][indices[0]] if has_aux else None
 
-            mixed = _batch_mixup(batch_spectra, rng, aug_factor=n_mixup)
+            mixed = _batch_mixup(batch_spectra, rng, alpha=alpha, aug_factor=n_mixup)
             for m_spec in mixed:
                 new_spectra.append(m_spec)
                 new_names.append(name)
