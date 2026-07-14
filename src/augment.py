@@ -249,6 +249,28 @@ def augment_data(data: dict, strategy: str = 'noise',
     else:
         raise ValueError(f"Unknown augmentation strategy: {strategy}")
 
+    # ── 构建增强后数据字典 ──
+    result = dict(data)  # shallow copy
+    result['spectra'] = new_spectra
+    result['names'] = new_names
+    result['groups'] = np.array(new_groups, dtype=np.int32)
+    # 批次数不变（增强样本不增加新批次）
+    result['n_batches'] = data['n_batches']
+
+    if has_target:
+        result['targets'] = np.array(new_targets, dtype=np.float64)
+    if has_aux:
+        result['aux'] = np.array(new_aux, dtype=np.float32)
+
+    # 清除预计算特征（需重新计算）
+    n_total = len(new_spectra)
+    result['stats'] = [None] * n_total
+    result['labs'] = [None] * n_total
+    result['lrel'] = [None] * n_total
+    result['rats'] = [None] * n_total
+
+    return result
+
 
 # ── 折内特征级 Mixup (跨批次混合) ─────────────────────────────────────────────
 
