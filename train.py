@@ -44,6 +44,8 @@ def main():
                         help="Jitter 缩放下限 (默认 0.9)")
     parser.add_argument("--aug-jitter-max", type=float, default=None,
                         help="Jitter 缩放上限 (默认 1.1)")
+    parser.add_argument("--aug-small-only", action="store_true",
+                        help="仅对 SMALL_BATCH_THRESHOLD 以内的小样本煤种做增强")
     args = parser.parse_args()
     # ── Step 1: 加载标签 ──────────────────────────────────────────────────
     print("=" * 60)
@@ -66,8 +68,15 @@ def main():
             continue
 
         # ── 数据增强（仅在训练时，保持 GroupKFold 结构） ──
-        if args.augment != "none":
-            # 构建参数字典（只传显式指定的值）
+        do_augment = (args.augment != "none")
+        if do_augment and args.aug_small_only:
+            # 仅小样本煤种做增强
+            from config import SMALL_BATCH_THRESHOLD
+            do_augment = (train_data['n_batches'] <= SMALL_BATCH_THRESHOLD)
+            if not do_augment:
+                print(f"  [{coal_type}] 跳过增强 ({train_data['n_batches']} batches > 阈值)")
+
+        if do_augment:
             aug_kw = {'strategy': args.augment, 'aug_factor': args.aug_factor}
             if args.aug_alpha is not None:
                 aug_kw['alpha'] = args.aug_alpha
