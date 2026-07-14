@@ -20,16 +20,22 @@ warnings.filterwarnings('ignore')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import COAL_TYPES, TRAIN_DIR, TEST_DIR
-from src.data   import load_labels, load_coal_spectra
-from src.model  import train_coal_model, predict_coal
-from src.submit import pack_submission
+from src.data     import load_labels, load_coal_spectra
+from src.model    import train_coal_model, predict_coal
+from src.submit   import pack_submission
 from src.experiment_tracker import log_experiment
+from src.augment  import augment_data
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--treatment", type=str, default="",
                         help="实验处理描述，写入 experiment_log.csv")
+    parser.add_argument("--augment", type=str, default="none",
+                        choices=["none", "noise", "mixup", "jitter", "combined"],
+                        help="数据增强策略: none=不增强")
+    parser.add_argument("--aug-factor", type=int, default=1,
+                        help="每条原始光谱生成的增强副本数")
     args = parser.parse_args()
     # ── Step 1: 加载标签 ──────────────────────────────────────────────────
     print("=" * 60)
@@ -50,6 +56,15 @@ def main():
         if train_data is None or train_data['n_batches'] == 0:
             print(f"\n  [{coal_type}] 未找到训练数据，跳过")
             continue
+
+        # ── 数据增强（仅在训练时，保持 GroupKFold 结构） ──
+        if args.augment != "none":
+            n_orig = len(train_data['spectra'])
+            train_data = augment_data(
+                train_data, strategy=args.augment, aug_factor=args.aug_factor)
+            n_aug = len(train_data['spectra']) - n_orig
+            print(f"  [{coal_type}] 增强: {n_orig} → {len(train_data['spectra'])} "
+                  f"(+{n_aug} augmented, groups={train_data['n_batches']})")
 
         model_dict = train_coal_model(coal_type, train_data)
         models[coal_type]      = model_dict
