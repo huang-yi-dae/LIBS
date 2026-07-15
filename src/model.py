@@ -71,7 +71,8 @@ def find_best_shrinkage(oof_preds, oof_true, coal_mean):
 
 # ── 单煤种训练 ────────────────────────────────────────────────────────────────
 
-def train_coal_model(coal_type, train_data, fold_mixup_config=None):
+def train_coal_model(coal_type, train_data, fold_mixup_config=None,
+                     perturb_cfg=None):
     """
     训练某煤种的两阶段模型，返回预测所需的全部参数。
 
@@ -95,7 +96,7 @@ def train_coal_model(coal_type, train_data, fold_mixup_config=None):
 
     # 光谱 → 特征矩阵（训练集 fit）
     X_spec, scaler_spec, pca, scaler_hand = build_feature_matrix(
-        train_data, n_batches, fit=True)
+        train_data, n_batches, fit=True, perturb_cfg=perturb_cfg)
 
     splits = get_cv_splits(groups, n_batches)
 

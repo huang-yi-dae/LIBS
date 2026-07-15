@@ -15,6 +15,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 from config import KEY_LINES, N_PCA_MAX, RANDOM_STATE
+from src.perturb import perturb_spectrum
 
 
 # ── 谱线积分 ──────────────────────────────────────────────────────────────────
@@ -30,9 +31,26 @@ def line_integral(wl, inten, center_nm, halfwin_nm):
 
 # ── 单条光谱特征 ──────────────────────────────────────────────────────────────
 
-def spectrum_features(wl, inten):
+def spectrum_features(wl, inten, perturb_cfg=None):
     """
     从一条光谱提取三层特征。
+
+    参数:
+        wl:   波长数组
+        inten: 强度数组
+        perturb_cfg: dict or None
+            扰动配置。格式: {"wave_shift": float, "baseline_type": str, "baseline_kw": dict}
+            非 None 时，先对 (wl, inten) 施加扰动再计算特征。
+            train 时传入，test 时传 None 保持推理一致性。
+    """
+    # 训练时可选施加扰动（模拟仪器偏差，增强模型鲁棒性）
+    if perturb_cfg is not None:
+        inten = perturb_spectrum(
+            wl, inten,
+            wave_shift=perturb_cfg.get("wave_shift", 0.0),
+            baseline_type=perturb_cfg.get("baseline_type", "none"),
+            baseline_kw=perturb_cfg.get("baseline_kw", None),
+        )
 
     返回:
         inorm  (D,)   : 强度归一化（用于 PCA）
@@ -83,16 +101,19 @@ def spectrum_features(wl, inten):
 
 # ── 批量特征计算 ──────────────────────────────────────────────────────────────
 
-def compute_features(data):
+def compute_features(data, perturb_cfg=None):
     """
     对 data_dict 中所有光谱计算特征，原地填充 stats/labs/lrel/rats 字段。
     同时返回归一化光谱矩阵（用于 PCA）。
+
+    参数:
+        perturb_cfg: 传给 spectrum_features 的扰动配置，train 时传入
     """
     raw_spectra = data['spectra']
     inorms, stats_list, labs_list, lrel_list, rats_list = [], [], [], [], []
 
     for wl, inten in raw_spectra:
-        inorm, stats, labs, lrel, rats = spectrum_features(wl, inten)
+        inorm, stats, labs, lrel, rats = spectrum_features(wl, inten, perturb_cfg)
         inorms.append(inorm)
         stats_list.append(stats)
         labs_list.append(labs)
@@ -114,7 +135,8 @@ def compute_features(data):
 # ── PCA + 拼接 ────────────────────────────────────────────────────────────────
 
 def build_feature_matrix(data, n_batches,
-                         scaler_spec=None, pca=None, scaler_hand=None, fit=True):
+                         scaler_spec=None, pca=None, scaler_hand=None,
+                         fit=True, perturb_cfg=None):
     """
     构建最终特征矩阵: [PCA(归一化光谱)] + [手工特征]。
 
@@ -123,8 +145,9 @@ def build_feature_matrix(data, n_batches,
 
     参数:
         n_batches: 批次数，用于限制 PCA 维度（不能超过样本数-1）
+        perturb_cfg: 训练时扰动配置，fit=True 时生效
     """
-    inorm_mat = compute_features(data)
+    inorm_mat = compute_features(data, perturb_cfg=perturb_cfg)
 
     if fit:
         scaler_spec = StandardScaler()

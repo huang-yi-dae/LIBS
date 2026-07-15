@@ -48,6 +48,24 @@ def main():
                         help="shot-noise 波长相关长度 (波长点数, 默认 3.0)")
     parser.add_argument("--aug-small-only", action="store_true",
                         help="仅对 SMALL_BATCH_THRESHOLD 以内的小样本煤种做增强")
+    # ── 光谱扰动（波长偏移 + 基线偏移）──
+    parser.add_argument("--wave-shift", type=float, default=0.0,
+                        help="波长偏移量(nm)，正值=红移(长波)，负值=蓝移(短波)")
+    parser.add_argument("--baseline-type", type=str, default="none",
+                        choices=["none", "constant", "linear", "polynomial", "sine"],
+                        help="基线偏移类型")
+    parser.add_argument("--baseline-amp", type=float, default=None,
+                        help="constant/sine 基线的振幅")
+    parser.add_argument("--baseline-slope", type=float, default=None,
+                        help="linear 基线的斜率")
+    parser.add_argument("--baseline-intercept", type=float, default=None,
+                        help="linear 基线的截距")
+    parser.add_argument("--baseline-freq", type=float, default=None,
+                        help="sine 基线的频率")
+    parser.add_argument("--baseline-phase", type=float, default=None,
+                        help="sine 基线的相位")
+    parser.add_argument("--baseline-poly-coeffs", type=str, default=None,
+                        help="polynomial 基线系数，逗号分隔，如 '0,0.01,0.0001' 对应 c0 + c1*x + c2*x^2")
     parser.add_argument("--fold-mixup", action="store_true",
                         help="折内跨批次 Mixup: CV每折训练集内做特征级插值")
     parser.add_argument("--fold-mixup-alpha", type=float, default=1.0,
@@ -55,6 +73,48 @@ def main():
     parser.add_argument("--fold-mixup-factor", type=int, default=1,
                         help="折内 Mixup 每条样本生成的混合副本数")
     args = parser.parse_args()
+
+    # ── 构建扰动配置 ──
+    perturb_cfg = None
+    if abs(args.wave_shift) > 1e-6 or args.baseline_type != "none":
+        baseline_kw = {}
+        if args.baseline_amp is not None:
+            baseline_kw["amp"] = args.baseline_amp
+        if args.baseline_slope is not None:
+            baseline_kw["slope"] = args.baseline_slope
+        if args.baseline_intercept is not None:
+            baseline_kw["intercept"] = args.baseline_intercept
+        if args.baseline_freq is not None:
+            baseline_kw["freq"] = args.baseline_freq
+        if args.baseline_phase is not None:
+            baseline_kw["phase"] = args.baseline_phase
+        if args.baseline_poly_coeffs is not None:
+            coeffs = [float(c) for c in args.baseline_poly_coeffs.split(",")]
+            baseline_kw["coeffs"] = coeffs
+
+        perturb_cfg = {
+            "wave_shift": args.wave_shift,
+            "baseline_type": args.baseline_type,
+            "baseline_kw": baseline_kw if baseline_kw else None,
+        }
+        print(f"  扰动配置: {perturb_cfg}")
+
+    # 自动拼接 treatment（如果没提供自定义描述）
+    if not args.treatment and perturb_cfg is not None:
+        parts = []
+        if abs(args.wave_shift) > 1e-6:
+            parts.append(f"波长偏移{args.wave_shift:+.1f}nm")
+        if args.baseline_type != "none":
+            bparts = [f"基线({args.baseline_type}"]
+            if args.baseline_amp is not None:
+                bparts.append(f"amp={args.baseline_amp}")
+            if args.baseline_slope is not None:
+                bparts.append(f"slope={args.baseline_slope}")
+            if args.baseline_freq is not None:
+                bparts.append(f"freq={args.baseline_freq}")
+            parts.append(",".join(bparts) + ")")
+        args.treatment = " ".join(parts)
+
     # ── Step 1: 加载标签 ──────────────────────────────────────────────────
     print("=" * 60)
     print("Step 1: 加载标签")
@@ -110,7 +170,9 @@ def main():
                 'aug_factor': args.fold_mixup_factor,
             }
 
-        model_dict = train_coal_model(coal_type, train_data, fold_mixup_config=fm_config)
+        model_dict = train_coal_model(coal_type, train_data,
+                                          fold_mixup_config=fm_config,
+                                          perturb_cfg=perturb_cfg)
         models[coal_type]      = model_dict
         cv_results[coal_type]  = model_dict['cv_rmse']
         n_batches_l.append(train_data['n_batches'])
