@@ -65,4 +65,9 @@ If you add tests, place them in a `tests/` directory mirroring `src/`, name file
 
 ## Experiment Tracking
 
-Every run automatically appends to `output/experiment_log.csv`. After submitting to the platform, manually fill in `test_score` and `treatment` (a short description of the change) to maintain a reproducible log of iterations.
+实验日志必须同时记录到以下两个文件：
+
+- **`output/experiment_log.csv`** — 结构化实验记录（程序自动追加）。每次运行 `train.py` 自动写入一条 `timestamp,cv_rmse,test_score,treatment` 记录。线上提交后手动填写 `test_score`。
+- **`EXPERIMENT_LOG.md`** — 可读实验记录（手动维护）。每次有意义的实验（尤其是线上提交后），必须在此文件追加新章节，包含实验目的、参数、CV-RMSE、线上得分、分析结论。
+
+两条记录必须对应同一实验，`treatment` 描述保持一致。
