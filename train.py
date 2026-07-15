@@ -125,9 +125,17 @@ def main():
     print("\n" + "=" * 60)
     print("Step 2: 两阶段训练（分煤种）")
 
+    # 预加载测试集各煤种批次数（作为全局 pooled CV-RMSE 的权重）
+    test_n_batches = {}
+    for ct in COAL_TYPES:
+        td = load_coal_spectra(TEST_DIR, ct)
+        test_n_batches[ct] = td['n_batches'] if td else 0
+    total_test_batches = sum(test_n_batches.values())
+    print(f"  测试集总批次: {total_test_batches} ({test_n_batches})")
+
     models      = {}
     cv_results  = {}
-    n_batches_l = []  # 各煤种批次数，用于加权平均
+    test_w_l    = []  # 各煤种测试批次数，用于加权
 
     for coal_type in COAL_TYPES:
         train_data = load_coal_spectra(TRAIN_DIR, coal_type, label_map, aux_map)
@@ -175,13 +183,14 @@ def main():
                                           perturb_cfg=perturb_cfg)
         models[coal_type]      = model_dict
         cv_results[coal_type]  = model_dict['cv_rmse']
-        n_batches_l.append(train_data['n_batches'])
+        test_w_l.append(test_n_batches[coal_type])
 
-    # 全局 pooled RMSE: 各煤种 pooled RMSE 按批次数平方加权
-    # global = sqrt( Σ(rmse_i² × n_i) / Σ(n_i) ) — 等价于汇集所有批次算一个 RMSE
-    n_batches = np.array(n_batches_l, dtype=np.float32)
-    rmses     = np.array(list(cv_results.values()), dtype=np.float32)
-    global_cv_rmse = float(np.sqrt(np.average(rmses ** 2, weights=n_batches)))
+    # 全局 pooled RMSE: 各煤种 pooled RMSE 按测试集批次数平方加权
+    # global = sqrt( Σ(rmse_i² × n_test_i) / Σ(n_test_i) )
+    # 使得 CV-RMSE 的加权方式与线上评测一致（测试集各批次等权）
+    test_w = np.array(test_w_l, dtype=np.float32)
+    rmses  = np.array(list(cv_results.values()), dtype=np.float32)
+    global_cv_rmse = float(np.sqrt(np.average(rmses ** 2, weights=test_w)))
     print(f"\n{'=' * 60}")
     print(f"全局 CV-RMSE: {global_cv_rmse:.2f}")
 

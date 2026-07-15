@@ -118,15 +118,18 @@ timestamp,cv_rmse,test_score,treatment
 2026-07-15 17:24:50,301.47,,PCAonly-batch-ols-n100-r0.7
 2026-07-15 17:25:20,326.96,,PCAonly-batch-ridge-n50-r0.7-a500
 
-# ===== 2026-07-15: 变更 CV-RMSE 计算方式 =====
-# 原方式: 煤种内平均各fold RMSE → 跨煤种按批次数加权平均
-# 新方式: 煤种内汇集所有OOF批次算pooled RMSE → 跨煤种按批次数平方加权再开方 (= 汇集所有batch算一个RMSE)
-# 新方式与线上测试集对齐: sqrt( Σ(true_i - pred_i)² / n_batches_total )
+# ===== 2026-07-15: 变更 CV-RMSE 计算方式（测试加权） =====
+# 改动说明:
+#   1. 煤种内: 汇集所有OOF批次算一个RMSE (原: 平均各fold RMSE)
+#   2. 跨煤种: 按测试集批次数平方加权 (原: 按训练集批次数加权平均)
+# 加权方式: global = sqrt( Σ(rmse_i² × n_test_i) / Σ(n_test_i) )
+# 每个测试批次等权，与线上评测完全对齐
 #
-# 5组有线上提交的实验在新计算方式下的对比:
-# 实验                                    原CV-RMSE  Pooled CV-RMSE  线上RMSE
-# 基线                                          173.67        180.90    278.50
-# LGBM Stage1 reg-search, Stage2 RidgeCV         188.08        243.15    283.89
-# 异常值剔除 zscore-2 (仅赵固一矿)               171.54        180.90    284.81
-# 波长偏移+0.18nm(统一偏移)                      165.54        172.82    277.44
-# 折内跨批次Mixup alpha=1.0 f=2                  164.98        201.69    290.29
+# 5组有线上提交的实验在新方式下的对比:
+# 实验                                    原CV-RMSE  测试加权CV-RMSE  线上RMSE
+# 基线                                          173.67          187.58    278.50
+# LGBM Stage1 reg-search, Stage2 RidgeCV         188.08          219.25    283.89
+# 异常值剔除 zscore-2 (仅赵固一矿)               171.54          187.58    284.81
+# 波长偏移+0.18nm(统一偏移)                      165.54          166.06    277.44
+# 折内跨批次Mixup alpha=1.0 f=2                  164.98          204.45    290.29
+2026-07-15 17:52:59,187.58,,基线 - 测试加权 pooled CV-RMSE
