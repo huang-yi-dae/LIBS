@@ -26,7 +26,7 @@ timestamp,cv_rmse,test_score,treatment
 2026-07-12 12:04:43,191.36,,"XGBoost Stage1 reg-search(10 candidates alpha/lambda 0.5-100), Stage2 RidgeCV"
 2026-07-12 12:25:15,188.08,283.89,"LGBM Stage1 reg-search, Stage2 RidgeCV — 线上验证"
 
-2026-07-12 12:36:00,172.66,278.5046,"[最终基线] RidgeCV 加权平均 CV-RMSE — 树模型实验全部差于此基线，回滚代码到 RidgeCV"
+2026-07-12 12:36:00,172.66,278.5046,"[基线] RidgeCV 测试集加权平均 CV-RMSE — 树模型实验全部差于此基线，回滚代码到 RidgeCV"
 
 2026-07-12 16:03:39,171.54,284.81387,"仅赵固一矿豫焦末煤 zscore-2 剔除: 同批次内对预测值做 z-score>2 剔除后再取中位数. CV-RMSE↓1.12 但线上↑6.3, 过拟合 CV."
 2026-07-12 16:20:08,172.08,,仅赵固一矿豫焦末煤 iqr 剔除: 同上但改用 IQR 法. CV-RMSE↓0.58,效果不明显,放弃线上验证.
@@ -132,4 +132,10 @@ timestamp,cv_rmse,test_score,treatment
 # 异常值剔除 zscore-2 (仅赵固一矿)               171.54          187.58    284.81
 # 波长偏移+0.18nm(统一偏移)                      165.54          166.06    277.44
 # 折内跨批次Mixup alpha=1.0 f=2                  164.98          204.45    290.29
-2026-07-15 17:52:59,187.58,,基线 - 测试加权 pooled CV-RMSE
+
+
+2026-07-15 17:52:59,187.58,278.50,基线 - 测试加权 pooled CV-RMSE
+2026-07-15 17:53:20,219.25,283.89,LGBM Stage1 reg-search - 测试加权 pooled CV-RMSE
+2026-07-15 17:53:25,187.58,284.81,异常值剔除 zscore-2 (仅赵固一矿) - 测试加权 pooled CV-RMSE
+2026-07-15 17:53:30,166.06,277.44,波长偏移+0.18nm(统一偏移) - 测试加权 pooled CV-RMSE
+2026-07-15 17:53:35,204.45,290.29,折内跨批次Mixup alpha=1.0 f=2 - 测试加权 pooled CV-RMSE
