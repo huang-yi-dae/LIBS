@@ -177,10 +177,11 @@ def main():
         cv_results[coal_type]  = model_dict['cv_rmse']
         n_batches_l.append(train_data['n_batches'])
 
-    # 加权平均（按批次数加权，更多批次 = 更可靠的 CV 估计）
-    weights = np.array(n_batches_l, dtype=np.float32)
-    values  = np.array(list(cv_results.values()), dtype=np.float32)
-    global_cv_rmse = float(np.average(values, weights=weights))
+    # 全局 pooled RMSE: 各煤种 pooled RMSE 按批次数平方加权
+    # global = sqrt( Σ(rmse_i² × n_i) / Σ(n_i) ) — 等价于汇集所有批次算一个 RMSE
+    n_batches = np.array(n_batches_l, dtype=np.float32)
+    rmses     = np.array(list(cv_results.values()), dtype=np.float32)
+    global_cv_rmse = float(np.sqrt(np.average(rmses ** 2, weights=n_batches)))
     print(f"\n{'=' * 60}")
     print(f"全局 CV-RMSE: {global_cv_rmse:.2f}")
 

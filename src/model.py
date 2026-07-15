@@ -159,7 +159,9 @@ def train_coal_model(coal_type, train_data, fold_mixup_config=None,
             fold_se.append((true_q - pred_q) ** 2)
         batch_rmses.append(float(np.sqrt(np.mean(fold_se))))
 
-    cv_rmse_raw = float(np.mean(batch_rmses))
+    # pooled RMSE: 汇集所有OOF批次计算（与线上评测一致，每个批次等权）
+    arr_errors = np.array(oof_batch_preds) - np.array(oof_batch_true)
+    cv_rmse_raw = float(np.sqrt(np.mean(arr_errors ** 2)))
 
     # 小批次煤种: 搜索最优收缩权重
     best_w = 1.0

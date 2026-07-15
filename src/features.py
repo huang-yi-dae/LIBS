@@ -52,13 +52,6 @@ def spectrum_features(wl, inten, perturb_cfg=None):
             baseline_kw=perturb_cfg.get("baseline_kw", None),
         )
 
-    返回:
-        inorm  (D,)   : 强度归一化（用于 PCA）
-        stats  (17,)  : 统计特征
-        labs   (11,)  : 谱线绝对积分
-        lrel   (11,)  : 谱线相对积分
-        rats   (4,)   : 物理比值
-    """
     total      = inten.sum() + 1e-8
     inten_norm = inten / total          # 归一化强度（消除激光能量波动）
     deriv      = np.diff(inten_norm)    # 一阶差分
