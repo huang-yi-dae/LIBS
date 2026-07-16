@@ -162,3 +162,46 @@ def build_feature_matrix(data, n_batches,
         return X, scaler_spec, pca, scaler_hand
     else:
         return scaler_hand.transform(X)
+
+
+def build_feature_matrix_encoder(data, n_batches, encoder, fit=True, scaler_hand=None):
+    """
+    用预训练编码器替换 PCA，构建特征矩阵。
+
+    流程与 build_feature_matrix 一致，但用 encoder.encode() 替代 PCA.transform()。
+    手工特征部分完全相同。
+
+    参数:
+        data:       data dict
+        n_batches:  批次数（暂未使用，保留接口一致性）
+        encoder:    预训练编码器 (实现了 encode(x) → (n, latent_dim))
+        fit:        True=训练模式（拟合并返回标准化器），False=推理模式
+        scaler_hand: 推理模式时传入训练好的标准化器
+
+    返回:
+        fit=True:  (X, scaler_hand)
+        fit=False: X
+    """
+    import torch
+    from src.pretrain import DEVICE as PT_DEVICE
+
+    # compute_features 填充手工特征 + 返回归一化光谱
+    inorm_mat = compute_features(data).astype(np.float32)
+
+    # 编码器提取隐变量
+    encoder = encoder.to(PT_DEVICE)
+    encoder.eval()
+    with torch.no_grad():
+        latent = encoder.encode(torch.from_numpy(inorm_mat).to(PT_DEVICE)).cpu().numpy()
+
+    # 拼接手工特征
+    hand_feats = np.hstack([data['stats'], data['labs'], data['lrel'], data['rats']])
+    X = np.hstack([latent, hand_feats])
+    X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+
+    if fit:
+        scaler_hand = StandardScaler()
+        X = scaler_hand.fit_transform(X)
+        return X, scaler_hand
+    else:
+        return scaler_hand.transform(X)

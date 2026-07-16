@@ -45,6 +45,10 @@ KEY_LINES = {
 # PCA 最大保留维数（防止小批次煤种过拟合）
 N_PCA_MAX = 30
 
+# 预训练编码器（None = 使用 PCA，设置路径 = 使用对比学习等编码器）
+PRETRAINED_PATH = None         # 例: "output/pretrained/contrastive_latent32.pt"
+PRETRAIN_LATENT_DIM = 32       # 编码器隐变量维度，需与 .pt 文件一致
+
 # ── 模型 ──────────────────────────────────────────────────────────────────────
 RANDOM_STATE = 42
 

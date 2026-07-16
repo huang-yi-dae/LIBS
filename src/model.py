@@ -19,8 +19,8 @@ from sklearn.linear_model import RidgeCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneGroupOut, GroupKFold
 
-from config import ALPHAS, AUX_COLS, SMALL_BATCH_THRESHOLD
-from src.features import build_feature_matrix
+from config import ALPHAS, AUX_COLS, SMALL_BATCH_THRESHOLD, PRETRAINED_PATH, PRETRAIN_LATENT_DIM
+from src.features import build_feature_matrix, build_feature_matrix_encoder
 from src.augment import fold_mixup
 
 
@@ -72,12 +72,17 @@ def find_best_shrinkage(oof_preds, oof_true, coal_mean):
 # ── 单煤种训练 ────────────────────────────────────────────────────────────────
 
 def train_coal_model(coal_type, train_data, fold_mixup_config=None,
-                     perturb_cfg=None):
+                     perturb_cfg=None, encoder=None):
     """
     训练某煤种的两阶段模型，返回预测所需的全部参数。
 
+    参数:
+        encoder: 预训练编码器（None = 使用 PCA 路径）
+
     输出 dict 包含:
-        spec_scalers  : (scaler_spec, pca, scaler_hand)
+        spec_scalers  : (scaler_spec, pca, scaler_hand) — PCA 路径
+        encoder       : 预训练编码器 — 预训练路径
+        scaler_hand   : 手工特征标准化器 — 预训练路径
         aux_models    : {辅助指标名: RidgeCV 或 None}
         scaler_s2     : Stage2 的特征标准化器
         final_model   : Stage2 最终 RidgeCV
@@ -95,8 +100,13 @@ def train_coal_model(coal_type, train_data, fold_mixup_config=None,
           f"Q={y.min():.0f}~{y.max():.0f}")
 
     # 光谱 → 特征矩阵（训练集 fit）
-    X_spec, scaler_spec, pca, scaler_hand = build_feature_matrix(
-        train_data, n_batches, fit=True, perturb_cfg=perturb_cfg)
+    if encoder is not None:
+        X_spec, scaler_hand = build_feature_matrix_encoder(
+            train_data, n_batches, encoder, fit=True)
+        scaler_spec, pca = None, None  # 占位，预训练路径不用
+    else:
+        X_spec, scaler_spec, pca, scaler_hand = build_feature_matrix(
+            train_data, n_batches, fit=True, perturb_cfg=perturb_cfg)
 
     splits = get_cv_splits(groups, n_batches)
 
@@ -180,15 +190,28 @@ def train_coal_model(coal_type, train_data, fold_mixup_config=None,
     final_model.fit(X_s2, y)
     print(f"    最优正则化 alpha: {final_model.alpha_:.1f}")
 
-    return {
-        'spec_scalers': (scaler_spec, pca, scaler_hand),
-        'aux_models':   aux_models,
-        'scaler_s2':    scaler_s2,
-        'final_model':  final_model,
-        'coal_mean':    coal_mean,
-        'shrink_w':     best_w,
-        'cv_rmse':      cv_rmse,
-    }
+    if encoder is not None:
+        model_dict = {
+            'encoder':      encoder,
+            'scaler_hand':  scaler_hand,
+            'aux_models':   aux_models,
+            'scaler_s2':    scaler_s2,
+            'final_model':  final_model,
+            'coal_mean':    coal_mean,
+            'shrink_w':     best_w,
+            'cv_rmse':      cv_rmse,
+        }
+    else:
+        model_dict = {
+            'spec_scalers': (scaler_spec, pca, scaler_hand),
+            'aux_models':   aux_models,
+            'scaler_s2':    scaler_s2,
+            'final_model':  final_model,
+            'coal_mean':    coal_mean,
+            'shrink_w':     best_w,
+            'cv_rmse':      cv_rmse,
+        }
+    return model_dict
 
 
 # ── 单煤种推理 ────────────────────────────────────────────────────────────────
@@ -199,17 +222,26 @@ def predict_coal(coal_type, test_data, model_dict):
     推理流程与训练流程一一对应:
       光谱 → [Stage1] → 预测辅助指标 → [Stage2] → 发热量 → 批次聚合
     """
-    scaler_spec, pca, scaler_hand = model_dict['spec_scalers']
-    aux_models  = model_dict['aux_models']
-    scaler_s2   = model_dict['scaler_s2']
-    final_model = model_dict['final_model']
-    coal_mean   = model_dict['coal_mean']
-    shrink_w    = model_dict['shrink_w']
-
-    X_spec = build_feature_matrix(
-        test_data, n_batches=None,
-        scaler_spec=scaler_spec, pca=pca, scaler_hand=scaler_hand,
-        fit=False)
+    if 'encoder' in model_dict:
+        X_spec = build_feature_matrix_encoder(
+            test_data, None, model_dict['encoder'],
+            fit=False, scaler_hand=model_dict['scaler_hand'])
+        scaler_s2   = model_dict['scaler_s2']
+        aux_models  = model_dict['aux_models']
+        final_model = model_dict['final_model']
+        coal_mean   = model_dict['coal_mean']
+        shrink_w    = model_dict['shrink_w']
+    else:
+        scaler_spec, pca, scaler_hand = model_dict['spec_scalers']
+        X_spec = build_feature_matrix(
+            test_data, n_batches=None,
+            scaler_spec=scaler_spec, pca=pca, scaler_hand=scaler_hand,
+            fit=False)
+        scaler_s2   = model_dict['scaler_s2']
+        aux_models  = model_dict['aux_models']
+        final_model = model_dict['final_model']
+        coal_mean   = model_dict['coal_mean']
+        shrink_w    = model_dict['shrink_w']
 
     pred_aux = np.zeros((len(test_data['spectra']), len(AUX_COLS)), dtype=np.float32)
     for col_idx, col_name in enumerate(AUX_COLS):
