@@ -19,7 +19,7 @@ from sklearn.linear_model import RidgeCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneGroupOut, GroupKFold
 
-from config import ALPHAS, AUX_COLS, SMALL_BATCH_THRESHOLD, PRETRAINED_PATH, PRETRAIN_LATENT_DIM
+from config import ALPHAS, AUX_COLS, SMALL_BATCH_THRESHOLD
 from src.features import build_feature_matrix, build_feature_matrix_encoder
 from src.augment import fold_mixup
 

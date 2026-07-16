@@ -19,8 +19,8 @@ warnings.filterwarnings('ignore')
 # 确保 src/ 包可被导入
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import COAL_TYPES, TRAIN_DIR, TEST_DIR, PRETRAINED_PATH, PRETRAIN_LATENT_DIM
-from src.pretrain import ContrastiveEncoder
+from config import COAL_TYPES, TRAIN_DIR, TEST_DIR, FEATURE_EXTRACTOR
+from src.feature_extractors import get_extractor
 from src.data     import load_labels, load_coal_spectra
 from src.model    import train_coal_model, predict_coal
 from src.submit   import pack_submission
@@ -32,8 +32,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--treatment", type=str, default="",
                         help="实验处理描述，写入 experiment_log.csv")
-    parser.add_argument("--pretrained", type=str, default=None,
-                        help=f"预训练编码器 .pt 路径 (默认=None 使用 PCA)")
     parser.add_argument("--augment", type=str, default="none",
                         choices=["none", "noise", "shot-noise", "mixup", "jitter", "combined"],
                         help="数据增强策略: none=不增强")
@@ -118,22 +116,14 @@ def main():
             parts.append(",".join(bparts) + ")")
         args.treatment = " ".join(parts)
 
-    # ── 加载预训练编码器（可选） ─────────────────────────────────────────────
-    encoder = None
-    pt_path = args.pretrained or PRETRAINED_PATH
-    if pt_path is not None and os.path.isfile(pt_path):
-        import torch
-        ckpt = torch.load(pt_path, map_location='cpu')
-        latent_dim = ckpt.get('latent_dim', PRETRAIN_LATENT_DIM)
-        input_dim = ckpt.get('input_dim', 7305)
-        encoder = ContrastiveEncoder(input_dim, latent_dim)
-        encoder.load_state_dict(ckpt['state_dict'])
-        encoder.eval()
+    # ── 加载特征提取器 ──────────────────────────────────────────────────────
+    encoder = get_extractor(FEATURE_EXTRACTOR)
+    if encoder is not None:
+        print(f"  特征提取: {FEATURE_EXTRACTOR}")
         if not args.treatment:
-            args.treatment = f"Contrastive-{latent_dim}+RidgeCV"
-        print(f"  预训练编码器: {pt_path}  (dim={latent_dim})")
-    elif pt_path is not None:
-        print(f"  [警告] 未找到预训练编码器: {pt_path}，使用 PCA")
+            args.treatment = FEATURE_EXTRACTOR
+    else:
+        print(f"  特征提取: PCA")
 
     # ── Step 1: 加载标签 ──────────────────────────────────────────────────
     print("=" * 60)
