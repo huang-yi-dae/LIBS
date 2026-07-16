@@ -22,6 +22,9 @@ LIBS/
 │   ├── data.py                 # 数据加载（光谱读取 + 标签解析）
 │   ├── features.py             # 特征工程（谱线积分 + 统计量 + PCA）
 │   ├── model.py                # 两阶段 Ridge 训练 + 推理
+│   ├── predictors.py           # 预测器统一接口 (RidgeCV/XGBoost/RF/GBR/MLP)
+│   ├── pretrain.py             # 预训练编码器 (AE/MAE/Contrastive)
+│   ├── pretrain_eval.py        # 预训练模型质量评测
 │   ├── submit.py               # 打包 submit.zip
 │   ├── experiment_tracker.py   # 跨轮次实验日志（记录 CV-RMSE）
 │   └── window_search.py        # 窗口宽度自动搜索工具
@@ -137,5 +140,5 @@ SMALL_BATCH_THRESHOLD = 10
 > **已排除的方向（经实验验证）：** （注：以下 CV-RMSE 采用当时的 per-fold 平均法计算，与当前测试加权 pooled 值不可直接比较，但线上分数和实验结论不变）
 > - 树模型（LGBM/XGBoost）替换 RidgeCV — 线上 283.89 vs RidgeCV 278.50，小样本下非线性能力有害。详见实验 #5~#15。
 > - 预测值异常值剔除后取中位数 — CV↓1.12 但线上↑6.3，CV乐观偏差。详见实验 #17。
-> - **神经网络嵌入替代 PCA** — AE/MAE/Contrastive/VAE/1D-CNN 五种方案全面退化（最佳 VAE-64: 284.46 vs PCA 172.66），无监督预训练与发热量回归的 task gap 在小样本下无法弥合。详见实验 #20~#25。
+> - **对比学习(Contrastive-32) 替换 PCA → 线上 241.86，↓36.64 (13.2%)** — AE/MAE/VAE/1D-CNN 四种方案全面退化（因隐变量维度关联与RidgeCV独立贡献假设冲突），但 **对比学习+线性探针的隐式正则化效果足以超越 PCA**。详见实验 2026-07-16。
 > - **光谱级数据增强** — 6 种策略（批次内 Mixup/高斯噪声/幅值抖动/组合/折内跨批次 Mixup/物理散粒噪声）50+ 参数组合全部不优于基线。小样本定向 Mixup 虽获 CV 改善 164.98，但线上 290.29 证伪。RidgeCV 正则化已饱和，合成数据不带来新信息。详见实验 #26~#74。

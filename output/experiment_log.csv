@@ -139,3 +139,4 @@ timestamp,cv_rmse,test_score,treatment
 2026-07-15 17:53:25,187.58,284.81,异常值剔除 zscore-2 (仅赵固一矿) - 测试加权 pooled CV-RMSE
 2026-07-15 17:53:30,166.06,277.44,波长偏移+0.18nm(统一偏移) - 测试加权 pooled CV-RMSE
 2026-07-15 17:53:35,204.45,290.29,折内跨批次Mixup alpha=1.0 f=2 - 测试加权 pooled CV-RMSE
+2026-07-16 12:21:47,168.67,241.85691,Contrastive-32 + RidgeCV (两阶段) — 对比学习替代PCA

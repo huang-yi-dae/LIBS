@@ -12,6 +12,9 @@ LIBS/
 │   ├── data.py            # Spectrum CSV loading + label Excel parsing
 │   ├── features.py        # Feature engineering: spectral statistics, line integrals, PCA
 │   ├── model.py           # Two-stage Ridge regression with GroupKFold CV + mean shrinkage
+│   ├── predictors.py      # Unified predictor interface (RidgeCV/XGBoost/RF/GBR/MLP)
+│   ├── pretrain.py        # Pretrained encoders (AE/MAE/Contrastive)
+│   ├── pretrain_eval.py   # Pretrained model quality evaluation
 │   ├── submit.py          # Package predictions into submit.zip
 │   ├── augment.py         # Spectral augmentation (shot-noise/mixup/jitter) — rejected
 │   ├── experiment_tracker.py  # Cross-run experiment logging (CSV-based)
@@ -32,6 +35,9 @@ uv sync              # Install all dependencies from uv.lock (use after clone or
 python train.py      # Run the full pipeline: training → evaluation → test inference → packaging
 python train.py --augment shot-noise --aug-noise-factor 0.05 --aug-factor 2  # 物理散粒噪声增强（实验已排除方向）
 python train.py --fold-mixup --fold-mixup-alpha 1.0 --fold-mixup-factor 1    # 折内跨批次 Mixup（实验已排除方向）
+python eval_pretrain.py --quick                                      # Part 1: 预训练模型质量评测（快速模式）
+python eval_combined.py --pretrained contrastive --mode two-stage    # Part 2: 组合评测（对比学习+全部预测器）
+python _submit_best.py                                               # 用最佳组合(Contrastive-32+RidgeCV)生成提交
 ```
 
 There are no separate build or test scripts. Validation is done locally via CV-RMSE reported by `train.py`, and online by submitting `output/submit.zip` to the competition platform.
