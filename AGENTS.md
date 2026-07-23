@@ -77,3 +77,13 @@ If you add tests, place them in a `tests/` directory mirroring `src/`, name file
 - **`EXPERIMENT_LOG.md`** — 可读实验记录（手动维护）。每次有意义的实验（尤其是线上提交后），必须在此文件追加新章节，包含实验目的、参数、CV-RMSE、线上得分、分析结论。
 
 两条记录必须对应同一实验，`treatment` 描述保持一致。
+
+## 实验对比准则
+
+每次实验的 CV-RMSE 和线上得分必须同时与**当前最优版本**对比，而非仅与初始基线对比。当前最优版本记录在 project memory 中（如 Contrastive-32: CV≈184, 线上 241.86）。
+
+对比格式示例：
+- CV-RMSE: **xxx**（较最优 ↓/↑ xx）
+- 线上得分：**xxx**（较最优 ↓/↑ xx）
+
+当最优版本更新时，同步更新 AGENTS.md 中的基准值。
