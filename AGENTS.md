@@ -79,6 +79,29 @@ If you add tests, place them in a `tests/` directory mirroring `src/`, name file
 
 两条记录必须对应同一实验，`treatment` 描述保持一致。
 
+## 实验记录写作规范 (Style Guide)
+
+双文件实验记录必须遵循以下统一格式，保证可读性与可检索性。
+
+### experiment_log.csv（机器可读，程序追加）
+- 固定 4 列 `timestamp,cv_rmse,test_score,treatment`；**纯 CSV，文件内禁止写 `#` 注释**（变更说明写在 EXPERIMENT_LOG.md）。
+- `timestamp`：`log_experiment` 自动写入的真实运行时间 `YYYY-MM-DD HH:MM:SS`，不得用占位/批量假时间戳。
+- `treatment`：简洁中文，约定如下：
+  - 模型名用中文或约定缩写：对比学习 / RidgeCV / LGBM / XGBoost / PCA / AE / MAE / VAE / 1D-CNN。
+  - 变体维度写为 `对比学习-32`、`AE-16`（连字符 + 数字）。
+  - 两阶段组合写为 `Stage1 X, Stage2 Y`；两阶段同模型写为 `两阶段 X`。
+  - 不写句末句号；补充说明用全角括号，如 `（测试加权 pooled）`、`（线上验证）`、`（最佳）`。
+  - 未填写处理时统一记 `（未记录处理）`，不得留空。
+  - 示例：`对比学习-32 + RidgeCV（两阶段）`、`Stage1 LGBM, Stage2 RidgeCV`、`KEY_LINES 谱线修正`。
+
+### EXPERIMENT_LOG.md（人工维护）
+- 每个实验用 `## 实验 N — 标题`，**N 全局唯一、顺序递增**，不得与已有编号（含 `6~15` 等区间组）冲突，不得用纯字母编号。
+- 方法论/流程变更类说明用 `## 方法论 — 日期: 标题`，与单实验章节区分。
+- `时间` 字段统一为 `YYYY-MM-DD HH:MM[:SS]`；纯日期保留 `YYYY-MM-DD`；时间区间用 `YYYY-MM-DD HH:MM ~ HH:MM`（全角 `~`）。
+- 表格字段建议统一：时间 / 特征 / CV-RMSE / 线上得分 / 处理 / 结论。
+- 文内引用其他实验用 `实验 #N`，N 必须与标题编号一致。
+- “已排除方向汇总”表的 `#` 列为方向序号（1~13），与实验编号相互独立，勿混用。
+
 ## Evaluation Metric (CV-RMSE)
 
 CV-RMSE is the offline proxy for the online score and is how every experiment is compared.
