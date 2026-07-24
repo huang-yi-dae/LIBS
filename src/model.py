@@ -21,7 +21,6 @@ from sklearn.model_selection import LeaveOneGroupOut, GroupKFold
 
 from config import ALPHAS, AUX_COLS, SMALL_BATCH_THRESHOLD
 from src.features import build_feature_matrix, build_feature_matrix_encoder
-from src.augment import fold_mixup
 
 
 # ── CV 分割策略 ───────────────────────────────────────────────────────────────
@@ -71,8 +70,7 @@ def find_best_shrinkage(oof_preds, oof_true, coal_mean):
 
 # ── 单煤种训练 ────────────────────────────────────────────────────────────────
 
-def train_coal_model(coal_type, train_data, fold_mixup_config=None,
-                     perturb_cfg=None, encoder=None):
+def train_coal_model(coal_type, train_data, encoder=None):
     """
     训练某煤种的两阶段模型，返回预测所需的全部参数。
 
@@ -106,7 +104,7 @@ def train_coal_model(coal_type, train_data, fold_mixup_config=None,
         scaler_spec, pca = None, None  # 占位，预训练路径不用
     else:
         X_spec, scaler_spec, pca, scaler_hand = build_feature_matrix(
-            train_data, n_batches, fit=True, perturb_cfg=perturb_cfg)
+            train_data, n_batches, fit=True)
 
     splits = get_cv_splits(groups, n_batches)
 
@@ -128,10 +126,6 @@ def train_coal_model(coal_type, train_data, fold_mixup_config=None,
         for tr_idx, val_idx in splits:
             X_tr = X_spec[tr_idx]
             y_tr = y_aux[tr_idx]
-            if fold_mixup_config:
-                X_aug, y_aug = fold_mixup(X_tr, y_tr, **fold_mixup_config)
-                X_tr = np.vstack([X_tr, X_aug])
-                y_tr = np.concatenate([y_tr, y_aug])
             m.fit(X_tr, y_tr)
             oof[val_idx] = m.predict(X_spec[val_idx])
         predicted_aux_oof[:, col_idx] = oof
@@ -150,10 +144,6 @@ def train_coal_model(coal_type, train_data, fold_mixup_config=None,
     for tr_idx, val_idx in splits:
         X_tr = X_s2[tr_idx]
         y_tr = y[tr_idx]
-        if fold_mixup_config:
-            X_aug, y_aug = fold_mixup(X_tr, y_tr, **fold_mixup_config)
-            X_tr = np.vstack([X_tr, X_aug])
-            y_tr = np.concatenate([y_tr, y_aug])
         m2 = RidgeCV(alphas=ALPHAS)
         m2.fit(X_tr, y_tr)
         val_pred   = m2.predict(X_s2[val_idx])

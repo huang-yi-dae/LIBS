@@ -15,7 +15,6 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 from config import KEY_LINES, N_PCA_MAX, RANDOM_STATE
-from src.perturb import perturb_spectrum
 
 
 # ── 谱线积分 ──────────────────────────────────────────────────────────────────
@@ -39,19 +38,8 @@ def spectrum_features(wl, inten, perturb_cfg=None):
         wl:   波长数组
         inten: 强度数组
         perturb_cfg: dict or None
-            扰动配置。格式: {"wave_shift": float, "baseline_type": str, "baseline_kw": dict}
-            非 None 时，先对 (wl, inten) 施加扰动再计算特征。
-            train 时传入，test 时传 None 保持推理一致性。
+            保留参数（光谱扰动实验方向已排除，目前为 no-op，不施加任何扰动）。
     """
-    # 训练时可选施加扰动（模拟仪器偏差，增强模型鲁棒性）
-    if perturb_cfg is not None:
-        inten = perturb_spectrum(
-            wl, inten,
-            wave_shift=perturb_cfg.get("wave_shift", 0.0),
-            baseline_type=perturb_cfg.get("baseline_type", "none"),
-            baseline_kw=perturb_cfg.get("baseline_kw", None),
-        )
-
     total      = inten.sum() + 1e-8
     inten_norm = inten / total          # 归一化强度（消除激光能量波动）
     deriv      = np.diff(inten_norm)    # 一阶差分

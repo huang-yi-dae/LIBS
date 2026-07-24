@@ -6,6 +6,8 @@
 LIBS/
 ├── config.py              # All hyperparameters & paths (single point of control)
 ├── train.py               # Entry point: 5-step pipeline (load → train → log → predict → pack)
+├── eval_pretrain.py       # Part 1 entry: pretrained-encoder quality eval (recon / latent-Y / linear-probe)
+├── eval_combined.py       # Part 2 entry: (pretrain method × predictor) GroupKFold CV comparison
 ├── pyproject.toml         # uv project manifest & dependency declarations
 │
 ├── src/
@@ -15,9 +17,8 @@ LIBS/
 │   ├── feature_extractors.py  # Feature extractor factory (PCA/Contrastive/AE/MAE)
 │   ├── predictors.py      # Unified predictor interface (RidgeCV/XGBoost/RF/GBR/MLP)
 │   ├── pretrain.py        # Pretrained encoders (AE/MAE/Contrastive)
-│   ├── pretrain_eval.py   # Pretrained model quality evaluation
+│   ├── pretrain_eval.py   # Pretrained model quality evaluation (helper used by eval_pretrain.py)
 │   ├── submit.py          # Package predictions into submit.zip
-│   ├── augment.py         # Spectral augmentation (shot-noise/mixup/jitter) — rejected
 │   ├── experiment_tracker.py  # Cross-run experiment logging (CSV-based)
 │   └── window_search.py   # Automated window width search for KEY_LINES
 │
@@ -34,11 +35,11 @@ Source code lives entirely under `src/`. Each module has a single, documented re
 ```bash
 uv sync              # Install all dependencies from uv.lock (use after clone or dependency change)
 python train.py      # Run the full pipeline: training → evaluation → test inference → packaging
-python train.py --augment shot-noise --aug-noise-factor 0.05 --aug-factor 2  # 物理散粒噪声增强（实验已排除方向）
-python train.py --fold-mixup --fold-mixup-alpha 1.0 --fold-mixup-factor 1    # 折内跨批次 Mixup（实验已排除方向）
 python eval_pretrain.py --quick                                      # Part 1: 预训练模型质量评测（快速模式）
 python eval_combined.py --pretrained contrastive --mode two-stage    # Part 2: 组合评测（对比学习+全部预测器）
 ```
+
+> Note: the spectral-augmentation and spectrum-perturbation CLI flags (`--augment`, `--fold-mixup`, `--wave-shift`, `--baseline-*`) were removed from `train.py` — those experiment directions were excluded by prior experiments. Only the plain `python train.py` pipeline remains. `src/augment.py` and `src/perturb.py` no longer exist.
 
 There are no separate build or test scripts. Validation is done locally via CV-RMSE reported by `train.py`, and online by submitting `output/submit.zip` to the competition platform.
 
@@ -77,6 +78,22 @@ If you add tests, place them in a `tests/` directory mirroring `src/`, name file
 - **`EXPERIMENT_LOG.md`** — 可读实验记录（手动维护）。每次有意义的实验（尤其是线上提交后），必须在此文件追加新章节，包含实验目的、参数、CV-RMSE、线上得分、分析结论。
 
 两条记录必须对应同一实验，`treatment` 描述保持一致。
+
+## Evaluation Metric (CV-RMSE)
+
+CV-RMSE is the offline proxy for the online score and is how every experiment is compared.
+
+- **Per coal type**: pool all out-of-fold (OOF) predictions within the type and compute one
+  pooled RMSE (NOT the average of per-fold RMSEs).
+- **Global**: weighted by each coal type's *test-set* batch count, so every test batch is
+  equally weighted — this matches the online score `sqrt(mean((true − pred)²))`:
+
+  ```
+  global = sqrt( Σ(rmse_i² × n_test_i) / Σ(n_test_i) )
+  ```
+
+  where `rmse_i` is coal type i's pooled OOF RMSE and `n_test_i` is its test-batch count.
+- Per-fold averaging is no longer used. Always read a CV-RMSE under this definition.
 
 ## 实验对比准则
 
