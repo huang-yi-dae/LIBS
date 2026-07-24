@@ -122,6 +122,8 @@ CV-RMSE is the offline proxy for the online score and is how every experiment is
 
 每次实验的 CV-RMSE 和线上得分必须同时与**当前最优版本**对比，而非仅与初始基线对比。当前最优版本记录在 project memory 中（如 Contrastive-32: CV≈184, 线上 241.86）。
 
+红线（正则化）: Ridge `ALPHAS` 不得加入 < 1.0 的值——α<1 在训练/测试分布偏移下必过拟合（线上单调劣化：α≈1.0→241.86, 0.3→248.33, 1e-3→255.62，见实验 #79/#80/#81 与 README §防过拟合策略）。以 CV-RMSE 下降为目标的 α 调参必须用线上验证做最终判据，不可仅凭 CV 增益采用。
+
 对比格式示例：
 - CV-RMSE: **xxx**（较最优 ↓/↑ xx）
 - 线上得分：**xxx**（较最优 ↓/↑ xx）
