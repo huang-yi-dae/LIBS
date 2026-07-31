@@ -57,6 +57,7 @@ COMBOS_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 SHRINK_GRID = [1.0, 0.95, 0.9, 0.85, 0.8, 0.7, 0.6]
 
 # 当前最优离线基准（contrastive_a1 的 proxy_lobo，见 eval_proxy 结论）
+# 权威来源：AGENTS.md §实验对比准则（canonical owner）——此处副本必须与该节一致
 PROXY_BASELINE = 161.70
 
 

@@ -55,6 +55,7 @@ from src.feature_extractors import get_extractor
 PROXY_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "proxy_eval.csv")
 
 # 已知线上分（用于一致性检验）；key 与运行时 --tag 对应
+# 权威来源：AGENTS.md §实验对比准则（canonical owner）——此处副本必须与该节一致
 ONLINE_SCORES = {
     "contrastive_a1":  241.86,   # 对比学习-32, α≥1（当前最优）
     "contrastive_a03": 248.3338, # α=0.3

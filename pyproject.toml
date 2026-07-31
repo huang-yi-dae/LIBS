@@ -13,3 +13,12 @@ dependencies = [
     "lightgbm>=4.6.0",
     "torch>=2.13.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

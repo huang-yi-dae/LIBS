@@ -24,10 +24,24 @@ LIBS/
 │   ├── experiment_tracker.py  # Cross-run experiment logging (CSV-based)
 │   └── window_search.py   # Automated window width search for KEY_LINES
 │
+├── tests/                 # Fast unit tests for eval-script pure functions (uv run pytest -q)
+│
+├── doc/                   # 深度笔记（数据特点与训练策略.md）
+├── docs/
+│   └── papers/            # 文献精读笔记 + runsheet.md（实验运行清单）
+│
 ├── train_data/            # Training spectra (organized by coal type → batch folders)
 ├── test_data/             # Test spectra (same layout as train_data)
 ├── submit_sample/         # Submission format template
-└── output/                # Generated artifacts: experiment_log.csv, submit.csv, submit.zip
+├── output/                # Generated artifacts: experiment_log.csv, submit.csv, submit.zip
+│
+├── README.md              # Project overview, strategy notes, proxy-eval results
+├── EXPERIMENT_LOG.md      # Human-readable experiment log (manually maintained)
+├── AGENTS.md              # This file: repository guidelines & canonical experiment baseline
+├── uv.lock                # Locked dependency versions (managed by uv)
+├── LICENSE
+├── .gitignore
+└── .python-version
 ```
 
 Source code lives entirely under `src/`. Each module has a single, documented responsibility. Data directories are flat by coal type, with batch folders nested inside.
@@ -56,14 +70,23 @@ There are no separate build or test scripts. Validation is done locally via CV-R
 
 ## Testing Guidelines
 
-This project currently has **no automated test suite**. Testing is manual:
+**Fast unit tests** (seconds, no data loading / no model training) cover the pure functions in
+`eval_proxy.py` and `eval_combos.py` — the pooled/weighted CV-RMSE formula, batch aggregation
+(`_agg`), shrinkage (`coal_rmse`), and rank correlation (`_spearman`):
+
+```bash
+uv run pytest -q     # tests/ 目录，pytest 已作为 dev 依赖（uv add --dev pytest）
+```
+
+Tests live in `tests/` with files named `test_*.py` (config in `pyproject.toml`
+`[tool.pytest.ini_options]`). Run them before committing changes to the eval scripts.
+
+Pipeline-level validation remains manual:
 
 - Run `python train.py` end-to-end and verify no errors.
 - Check `output/experiment_log.csv` for the new CV-RMSE entry.
 - Visually inspect `output/submit.csv` for sensible predictions (e.g., no NaN, within expect
 ed kcal/kg range).
-
-If you add tests, place them in a `tests/` directory mirroring `src/`, name files `test_*.py`, and document the test framework in this section.
 
 ## Commit & Pull Request Guidelines
 
@@ -80,6 +103,8 @@ If you add tests, place them in a `tests/` directory mirroring `src/`, name file
 - **`EXPERIMENT_LOG.md`** — 可读实验记录（手动维护）。每次有意义的实验（尤其是线上提交后），必须在此文件追加新章节，包含实验目的、参数、CV-RMSE、线上得分、分析结论。
 
 两条记录必须对应同一实验，`treatment` 描述保持一致。
+
+深度背景资料：实验运行清单见 [docs/papers/runsheet.md](docs/papers/runsheet.md)；数据分布特点与训练策略分析见 [doc/数据特点与训练策略.md](doc/数据特点与训练策略.md)。
 
 ## 实验记录写作规范 (Style Guide)
 
@@ -122,12 +147,24 @@ CV-RMSE is the offline proxy for the online score and is how every experiment is
 
 ## 实验对比准则
 
-每次实验的 CV-RMSE 和线上得分必须同时与**当前最优版本**对比，而非仅与初始基线对比。当前最优版本记录在 project memory 中（如 Contrastive-32: CV≈184, 线上 241.86）。
+每次实验的 CV-RMSE 和线上得分必须同时与**当前最优版本**对比，而非仅与初始基线对比。
+
+**本节是当前最优基线的唯一权威来源（canonical owner）**。其他副本（`eval_proxy.py` 的
+`ONLINE_SCORES`、`eval_combos.py` 的 `PROXY_BASELINE`、project memory）必须与本节一致；
+更新最优版本时**先改本节，再同步各副本**。
+
+当前最优基线（Contrastive-32 + RidgeCV 两阶段，α≥1，即 tag `contrastive_a1`）：
+
+| 指标 | 值 |
+|------|-----|
+| 线上得分 | **241.86** |
+| proxy_lobo（离线诚实代理） | **161.70** |
+| CV-RMSE（旧口径，仅参考） | ≈184 |
+
+已知线上分参考点（用于代理一致性检验）：`contrastive_a03` 248.3338、`contrastive_a1e3` 255.6243、`pca` 278.50。
 
 红线（正则化）: Ridge `ALPHAS` 不得加入 < 1.0 的值——α<1 在训练/测试分布偏移下必过拟合（线上单调劣化：α≈1.0→241.86, 0.3→248.33, 1e-3→255.62，见实验 #79/#80/#81 与 README §防过拟合策略）。以 CV-RMSE 下降为目标的 α 调参必须用线上验证做最终判据，不可仅凭 CV 增益采用。
 
 对比格式示例：
 - CV-RMSE: **xxx**（较最优 ↓/↑ xx）
 - 线上得分：**xxx**（较最优 ↓/↑ xx）
-
-当最优版本更新时，同步更新 AGENTS.md 中的基准值。
