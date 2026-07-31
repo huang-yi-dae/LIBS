@@ -8,6 +8,8 @@ LIBS/
 ├── train.py               # Entry point: 5-step pipeline (load → train → log → predict → pack)
 ├── eval_pretrain.py       # Part 1 entry: pretrained-encoder quality eval (recon / latent-Y / linear-probe)
 ├── eval_combined.py       # Part 2 entry: (pretrain method × predictor) GroupKFold CV comparison
+├── eval_proxy.py          # Offline proxy eval (proxy_lobo + adversarial AUC, online-consistency gate)
+├── eval_combos.py         # Combo-direction offline eval (robust agg / shrink / aux-filter / cross-coal share)
 ├── pyproject.toml         # uv project manifest & dependency declarations
 │
 ├── src/
